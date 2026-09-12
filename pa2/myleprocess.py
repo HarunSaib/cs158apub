@@ -11,17 +11,23 @@ class Message:
         self.uuid = uuid_val # uuid being the ID passed around
         self.flag = flag # flag being whether or not the leader has been elected with the associated ID
 
-    def uuid_to_dict(self):
+    # function to convert 'Message' class object into dict, to be converted into JSON and send
+    def to_dict(self):
         return {
-            "uuid": str(self.uuid), 
-            "flag": self.flag
-                }
+            "uuid": str(self.uuid), # store uuid as str(ing)
+            "flag": self.flag # store flag as is
+        } # pretty straight forward turning into dict
 
-    def uuid_from_dict(data):
+    # function to convert received dictionaty from json to 'Message' class object
+    @staticmethod
+    def from_dict(data):
+        # Using our message class
         return Message(
-            uuid.UUID(data["uuid"])
+            # We first derive (and convert to UUID obj) the uuid from the data dictionaty
+            uuid.UUID(data["uuid"]),
+            # Then we fetch the flag
             data["flag"]
-        )
+        ) # And return as a message object
 
 
 def read_config(filename="config.txt"):
