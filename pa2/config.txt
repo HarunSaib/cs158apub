@@ -1,0 +1,2 @@
+my_server_ip,my_server_port
+next_process_ip,next_process_port
