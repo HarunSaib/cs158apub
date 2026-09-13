@@ -58,14 +58,108 @@ def send_message(message):
 
     print(f"Sent: uuid={message.uuid}, flag={message.flag}")
 
-def run_server():
-    pass
+# function to listen and connect to any incoming requested addresses
+def run_server(local_address):
+    global server_connection # Socket connection for receiving to the server's (me) IP and port
+    
+    # Creates 'server_socket', which is a TCP socket that listens for incoming IPv4 address connections
+    server_socket = socket.socket(
+        socket.AF_INET, # AF_NET means IPv4 standard for IP addresses
+        socket.SOCK_STREAM # SOCK_STREAM means TCP
+    )
 
-def run_client():
-    pass
+    # Configures the the socket before it binds to an IP and port
+    server_socket.setsockopt(
+        # SOL_SOCKET is where the general socket settings are, so we're modfying a var in there
+        socket.SOL_SOCKET, 
+        # SO_REUSEADDR is the var, this flag allows the reuse of same IP and port after it recently closed
+        socket.SO_REUSEADDR,
+        # 1 just sets that flag to true, enabling it :)
+        1
+    )
+
+    # this assigns the server socket to the IP address and port from config.txt (passed in)
+    server_socket.bind(local_address)
+    # this starts listening/waiting for incoming TCP connections, the 1 being the queue size allowed to wait
+    server_socket.listen(1)
+
+    # This waits until we have a socket asking to connect, once it does we fetch the connection and address
+    # these are used in the receive_loop() function
+    server_connection, address = server_socket.accept()
+
+    print(f"Accepted connection from {address}")
+
+def run_client(next_address):
+    global client_connection # Socket connection for sending to the client's (neighbor) IP and port 
+
+    time.sleep(2) # Sleep to allow the other processes time to execute, no deadlock
+
+    # Once again creating a TCP socket, this time a client side, that sends out an IPv4 connection
+    client_connection = socket.socket(
+        socket.AF_INET, # AF_NET means IPv4 standard for IP addresses
+        socket.SOCK_STREAM # SOCK_STREAM means TCP
+    )
+
+    # Sends out a connection request to the client (neighbor) (passed in) 
+    client_connection.connect(next_address)
+
+    # Once connected, create and send a message object including my process uuid and the election flag.
+    initial_message = Message(process_uuid, 0)
+    send_message(initial_message)
 
 def receive_loop():
-    pass
+    global state, leader_id
+    
+    buffer = ""
+
+    while True:
+        received_bytes = server_connection.recv(1024)
+
+        if not received_bytes:
+            break
+
+        buffer += received_bytes.decode()
+
+        while "\n" in buffer:
+            line, buffer = buffer.split("\n", 1)
+
+            if not line:
+                continue
+
+            data = json.loads(line)
+            message = Message.from_dict(data)
+
+            print(
+                f"Received: uuid={message.uuid},"
+                f"flag={message.flag}"
+            )
+
+            if message.flag == 0:
+                if state == 1:
+                    continue
+                    
+                if message.uuid > process_uuid:
+                    send_message(message)
+
+                elif message.uuid == process_uuid:
+                    leader_id = process_uuid
+                    state = 1
+                    send_message(Message(process_uuid, 1))
+
+                else:
+                    print(f"Ignored smaller UUID: {message.uuid}")
+
+            elif message.flag == 1:
+                leader_id = message.uuid
+                state = 1
+
+                if message.uuid == process_uuid:
+                    break
+                else:
+                    send_message(message)
+                    break
+        if state == 1 and leader_id is not None:
+            print(f"Leader is {leader_id}")
 
 
 def main():
