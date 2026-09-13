@@ -1,4 +1,3 @@
-````markdown
 # PA2 Leader Election
 
 This program creates a process in a TCP ring and uses UUIDs to elect a leader.
@@ -40,7 +39,6 @@ Leader is d71be611-2085-4d9f-8da4-9a13990b1c45
 
 The process with the greatest UUID becomes the leader.
 
-```markdown
 ## Screenshots
 
 ### Process 1
@@ -54,4 +52,3 @@ The process with the greatest UUID becomes the leader.
 ### Process 3
 
 ![Process 3 output](screenshots/pc3.png)
-```
