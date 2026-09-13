@@ -3,6 +3,9 @@ import json
 import socket
 import threading
 import time
+import sys
+
+log_lock = threading.Lock()
 
 process_uuid = uuid.uuid4()
 leader_id = None
@@ -19,7 +22,7 @@ class Message:
     # function to convert 'Message' class object into dict, to be converted into JSON and send
     def to_dict(self):
         return {
-            "uuid": self.uuid, # store uuid as str(ing)
+            "uuid": str(self.uuid), # store uuid as str(ing)
             "flag": self.flag # store flag as is
         } # pretty straight forward turning into dict
 
@@ -34,16 +37,16 @@ class Message:
             data["flag"]
         ) # And return as a message object
 
-
 def read_config(filename="config.txt"):
     with open(filename, "r") as file: # grab the file from the name passed in
+
         # create list of lines in the file, strip()-ping whitespaces 
         lines = [line.strip() for line in file if line.strip()] 
-
+        
     # small helper to unpack lines from the list
     def parse_address(line):
-        ip, port = line.splot(",") # fetch ip and port seperated by comma
-        return ip.strip(), port.strip() # clean up whitespaces
+        ip, port = line.split(",") # fetch ip and port seperated by comma
+        return ip.strip(), int(port.strip()) # clean up whitespaces
     
     return parse_address(lines[0]), parse_address(lines[1])
 
@@ -56,7 +59,10 @@ def send_message(message):
     # then we send said bytes to the connected client, from myself (the server)
     client_connection.sendall(json_text.encode())
 
-    print(f"Sent: uuid={message.uuid}, flag={message.flag}")
+    log(
+        f"Sent: uuid={message.uuid}, "
+        f"flag={message.flag}"
+    )
 
 # function to listen and connect to any incoming requested addresses
 def run_server(local_address):
@@ -87,33 +93,42 @@ def run_server(local_address):
     # these are used in the receive_loop() function
     server_connection, address = server_socket.accept()
 
-    print(f"Accepted connection from {address}")
+    log(f"Accepted connection from {address}")
 
 def run_client(next_address):
     global client_connection # Socket connection for sending to the client's (neighbor) IP and port 
 
     time.sleep(2) # Sleep to allow the other processes time to execute, no deadlock
 
-    # Once again creating a TCP socket, this time a client side, that sends out an IPv4 connection
-    client_connection = socket.socket(
-        socket.AF_INET, # AF_NET means IPv4 standard for IP addresses
-        socket.SOCK_STREAM # SOCK_STREAM means TCP
-    )
+    # Try block for if no connection is established
+    while True:
+        try:
+            # Once again creating a TCP socket, this time a client side, that sends out an IPv4 connection
+            client_connection = socket.socket(
+                socket.AF_INET, # AF_NET means IPv4 standard for IP addresses
+                socket.SOCK_STREAM # SOCK_STREAM means TCP
+            )
 
-    # Sends out a connection request to the client (neighbor) (passed in) 
-    client_connection.connect(next_address)
+            # Sends out a connection request to the client (neighbor) (passed in) 
+            client_connection.connect(next_address)
+            break
+
+        except ConnectionRefusedError:
+            client_connection.close()
+            time.sleep(1)
 
     # Once connected, create and send a message object including my process uuid and the election flag.
     initial_message = Message(process_uuid, 0)
     send_message(initial_message)
 
+# Receive and sending loop for the election rounds, as per the election rules
 def receive_loop():
     global state, leader_id
     
-    buffer = ""
+    buffer = "" # stores incoming text until a complete newline JSON message is available
 
     while True:
-        received_bytes = server_connection.recv(1024)
+        received_bytes = server_connection.recv(1024) # Waits for up to 1024 bytes from the previous process
 
         if not received_bytes:
             break
@@ -129,38 +144,108 @@ def receive_loop():
             data = json.loads(line)
             message = Message.from_dict(data)
 
-            print(
-                f"Received: uuid={message.uuid},"
-                f"flag={message.flag}"
-            )
+            message = Message.from_dict(data)
+
+            if message.uuid > process_uuid:
+                comparison = "greater"
+            elif message.uuid == process_uuid:
+                comparison = "same"
+            else:
+                comparison = "less"
+
+            if state == 0:
+                log(
+                    f"Received: uuid={message.uuid}, "
+                    f"flag={message.flag}, "
+                    f"{comparison}, state=0"
+                )
+            else:
+                log(
+                    f"Received: uuid={message.uuid}, "
+                    f"flag={message.flag}, "
+                    f"{comparison}, state=1, "
+                    f"leader_id={leader_id}"
+                )
 
             if message.flag == 0:
                 if state == 1:
+                    log(
+                        f"Ignored: uuid={message.uuid}, "
+                        f"reason=leader already elected"
+                    )
                     continue
-                    
+
                 if message.uuid > process_uuid:
                     send_message(message)
 
                 elif message.uuid == process_uuid:
                     leader_id = process_uuid
                     state = 1
+
+                    log(f"Leader is decided to {leader_id}")
+
                     send_message(Message(process_uuid, 1))
 
                 else:
-                    print(f"Ignored smaller UUID: {message.uuid}")
+                    log(
+                        f"Ignored: uuid={message.uuid}, "
+                        f"reason=smaller UUID"
+                    )
 
             elif message.flag == 1:
                 leader_id = message.uuid
                 state = 1
 
+                log(f"Leader is {leader_id}")
+
                 if message.uuid == process_uuid:
-                    break
+                    return
                 else:
                     send_message(message)
-                    break
-        if state == 1 and leader_id is not None:
-            print(f"Leader is {leader_id}")
+                    return
 
+# Small helper function to write logs to logX.txt file
+def log(message):
+    print(message)
+
+    # log_lock stops the two threads from writing at same time
+    with log_lock:
+        with open("log1.txt", "a") as file:
+            file.write(message + "\n")
 
 def main():
-    pass
+
+    # Start the logging file
+    with open("log1.txt", "w") as file:
+        pass
+
+    # Fetch IPs and Ports from config.txt
+    local_address, next_address = read_config()
+
+    log(f"Process started: uuid={process_uuid}")
+
+    # Start server thread using local IP and port
+    server_thread = threading.Thread(
+        target=run_server,
+        args=(local_address,)
+    )
+
+    # Start client thread using next IP and port
+    client_thread = threading.Thread(
+        target=run_client,
+        args=(next_address,)
+    )
+
+    # Start both threads
+    server_thread.start()
+    client_thread.start()
+
+    # Parallelize them
+    server_thread.join()
+    client_thread.join()
+
+    # Begin the receiving and sending message loop function
+    receive_loop()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,12 @@
+Process started: uuid=d71be611-2085-4d9f-8da4-9a13990b1c45
+Accepted connection from ('127.0.0.1', 61463)
+Sent: uuid=d71be611-2085-4d9f-8da4-9a13990b1c45, flag=0
+Received: uuid=0d8ea667-29c7-45f2-9340-e916411b6285, flag=0, less, state=0
+Ignored: uuid=0d8ea667-29c7-45f2-9340-e916411b6285, reason=smaller UUID
+Received: uuid=4e346aa7-2522-40dc-b5a3-63b1807eea3d, flag=0, less, state=0
+Ignored: uuid=4e346aa7-2522-40dc-b5a3-63b1807eea3d, reason=smaller UUID
+Received: uuid=d71be611-2085-4d9f-8da4-9a13990b1c45, flag=0, same, state=0
+Leader is decided to d71be611-2085-4d9f-8da4-9a13990b1c45
+Sent: uuid=d71be611-2085-4d9f-8da4-9a13990b1c45, flag=1
+Received: uuid=d71be611-2085-4d9f-8da4-9a13990b1c45, flag=1, same, state=1, leader_id=d71be611-2085-4d9f-8da4-9a13990b1c45
+Leader is d71be611-2085-4d9f-8da4-9a13990b1c45

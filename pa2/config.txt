@@ -1,2 +1,2 @@
-my_server_ip,my_server_port
-next_process_ip,next_process_port
+127.0.0.1,5001
+127.0.0.1,5002
