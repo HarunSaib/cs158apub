@@ -53,9 +53,9 @@ def read_config(filename="config.txt"):
 # function to convert the processed uuid and flag dict into json and send to client
 def send_message(message):
     data = message.to_dict() # turning the message into data to send as a dict
-    json_text = json.dumps(data) + "\n" # serializaing the data as json (adduing a newline)
+    json_text = json.dumps(data) # serializaing the data as json (adduing a newline)
 
-    # using .encode() turns the python sting into bytes (essentially adding the b'{...}\n' from slides)
+    # using .encode() turns the python sting into bytes (essentially adding the b'{...}' from slides)
     # then we send said bytes to the connected client, from myself (the server)
     client_connection.sendall(json_text.encode())
 
@@ -135,8 +135,10 @@ def receive_loop():
 
         buffer += received_bytes.decode()
 
-        while "\n" in buffer:
-            line, buffer = buffer.split("\n", 1)
+        while "}" in buffer:
+            line, buffer = buffer.split("}", 1)
+
+            line += "}"
 
             if not line:
                 continue
