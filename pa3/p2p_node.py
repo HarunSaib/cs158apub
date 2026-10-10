@@ -44,19 +44,24 @@ HELP = """Commands:
 """
 
 
-def cli_loop(node):
-    """Read user commands until quit.
+import cmd
 
-    TODO: implement the commands in HELP using node.peers.snapshot()
-          and file_manager.request_file().
-    """
-    print(HELP)
-    while True:
-        line = input("> ").strip()
-        if line == "quit":
-            break
-        # TODO
-
+class P2PNodeCLI(cmd.Cmd):
+    prompt = '> '
+    def __init__(self, node):
+        super().__init__()
+        self.node = node
+    def do_quit(self,arg):
+        return True
+    def do_rebroadcast(self, _arg):
+        """rebroadcast -- retransmit the advertising packet (this is done automatically on startup, but you may do it again)"""
+        discovery.send_peer_request(self.node)
+    def do_peers(self, _arg):
+        """show connected peers and their files"""
+        print('not yet implemented')
+    def do_get(self, arg):
+        """get <peer_key> <file> - download a file"""
+        print('not yet implemented')
 
 def main():
     parser = argparse.ArgumentParser(description="P2P file sharing agent")
@@ -76,10 +81,7 @@ def main():
     file_manager.start_file_list_broadcaster(node)
     discovery.start_discovery(node)
 
-    try:
-        cli_loop(node)
-    except (KeyboardInterrupt, EOFError):
-        pass
+    P2PNodeCLI(node).cmdloop()
 
     # Termination: no goodbye message. Close the sockets; peers see recv() == b''.
     for peer in node.peers.all_peers():
