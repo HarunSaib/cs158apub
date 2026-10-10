@@ -81,7 +81,10 @@ def main():
     file_manager.start_file_list_broadcaster(node)
     discovery.start_discovery(node)
 
-    P2PNodeCLI(node).cmdloop()
+    try:
+        P2PNodeCLI(node).cmdloop()
+    except KeyboardInterrupt:      # Ctrl+C: fall through to the normal shutdown below
+        print()                    # move past the "> " prompt
 
     # Termination: no goodbye message. Close the sockets; peers see recv() == b''.
     for peer in node.peers.all_peers():
