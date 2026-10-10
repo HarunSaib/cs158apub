@@ -1,6 +1,8 @@
 # My folders
 pb2/
 pc2/
+pa2/log1.txt
+pa2/config.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
