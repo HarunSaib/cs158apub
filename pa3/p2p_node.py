@@ -53,6 +53,7 @@ class P2PNodeCLI(cmd.Cmd):
         self.node = node
     def do_quit(self,arg):
         return True
+    do_EOF = do_quit
     def do_rebroadcast(self, _arg):
         """rebroadcast -- retransmit the advertising packet (this is done automatically on startup, but you may do it again)"""
         discovery.send_peer_request(self.node)
