@@ -14,6 +14,7 @@ Threads started (assignment minimum):
 """
 
 import argparse
+import cmd
 import os
 import uuid
 
@@ -40,32 +41,52 @@ class Node:
         self.udp_sock = None                    # set by discovery.start_discovery
 
 
-HELP = """Commands:
-  peers                     show connected peers and their files
-  get <peer_key> <file>     download a file   (peer_key looks like 192.168.1.5:6001)
-  quit                      close everything and exit
-"""
-
-
-import cmd
-
 class P2PNodeCLI(cmd.Cmd):
+    intro = "P2P node ready. Type 'help' for commands."
     prompt = '> '
+
     def __init__(self, node):
         super().__init__()
         self.node = node
-    def do_quit(self,arg):
+
+    def emptyline(self):
+        """Do nothing on an empty line (cmd.Cmd's default repeats the last command)."""
+        pass
+
+    def do_quit(self, _arg):
+        """quit -- close all connections and exit"""
         return True
-    do_EOF = do_quit
+
+    def do_EOF(self, _arg):
+        """Ctrl+D / Ctrl+Z -- same as quit"""
+        print()                                 # ends the "> " prompt line before shutdown output
+        return True
+
     def do_rebroadcast(self, _arg):
         """rebroadcast -- retransmit the advertising packet (this is done automatically on startup, but you may do it again)"""
         discovery.send_peer_request(self.node)
+
     def do_peers(self, _arg):
-        """show connected peers and their files"""
-        print('not yet implemented')
+        """peers -- show connected peers and the files they advertise"""
+        table = self.node.peers.snapshot()
+        if not table:
+            print("no connected peers")
+            return
+        for key, files in table.items():
+            print(f"{key}:")
+            for name in files:
+                print(f"    {name}")
+            if not files:
+                print("    (no files)")
+
     def do_get(self, arg):
-        """get <peer_key> <file> - download a file"""
-        print('not yet implemented')
+        """get <peer_key> <file> -- download a file (peer_key as shown by 'peers', e.g. 192.168.1.5:6001)"""
+        parts = arg.split(maxsplit=1)
+        if len(parts) != 2:
+            print("usage: get <peer_key> <file>")
+            return
+        peer_key, filename = parts
+        print(file_manager.request_file(self.node, peer_key, filename))
 
 def main():
     parser = argparse.ArgumentParser(description="P2P file sharing agent")
