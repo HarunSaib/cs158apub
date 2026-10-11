@@ -12,9 +12,8 @@ TCP connection management.
 
 import socket
 import threading
-
+import logging
 import file_manager
-import logger
 import protocol
 from peer_table import Peer
 
@@ -24,7 +23,14 @@ def send_to_peer(node, peer, msg):
     """Send one message to a peer and log it. On failure, treat it as a disconnect."""
     try:
         protocol.send_message(peer.sock, msg, peer.send_lock)
-        logger.log_sent(peer.addr, msg["type"])
+        
+        logging.info(
+            "SENT %s:%s %s",
+            peer.addr[0],
+            peer.addr[1],
+            msg["type"],
+        )
+        
     except OSError:
         handle_disconnect(node, peer.key)
 
@@ -81,10 +87,15 @@ def receive_loop(node, peer):
               msg = None
           if msg is None:            # clean close OR died mid-message OR reset
               break
-          logger.log_received(peer.addr, msg.get("type"))
+          logging.info(
+              "RECEIVED %s:%s %s",
+              peer.addr[0],
+              peer.addr[1],
+              msg.get("type"),
+          )
           dispatch(node, peer, msg)
-      handle_disconnect(node, peer.key)
-    """
+      handle_disconnect(node, peer.key)"""
+    
     raise NotImplementedError
 
 
@@ -96,8 +107,14 @@ def dispatch(node, peer, msg):
         protocol.FILE_DATA: file_manager.handle_file_data,
     }
     handler = handlers.get(msg.get("type"))
-    if handler is None:
-        logger.log_info(f"Unknown message type from {peer.addr}: {msg.get('type')}")
+    if handler is None:   
+        logging.info(
+            "Unknown message type from %s:%s: %s",
+            peer.addr[0],
+            peer.addr[1],
+            msg.get("type"),
+        )
+        
         return
     handler(node, peer, msg)
 

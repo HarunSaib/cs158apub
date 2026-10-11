@@ -17,11 +17,10 @@ import argparse
 import cmd
 import os
 import uuid
-
+import logging
 import connections
 import discovery
 import file_manager
-import logger
 from peer_table import PeerTable
 
 
@@ -97,8 +96,23 @@ def main():
     node = Node(args.port, args.dir)
     os.makedirs(node.shared_dir, exist_ok=True)
     os.makedirs(node.downloads_dir, exist_ok=True)
-    logger.init_log(node.log_path)
-    logger.log_info(f"Node {node.node_id} starting on TCP port {node.tcp_port}")
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s.%(msecs)03d] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[
+            logging.FileHandler(node.log_path, mode="w", encoding="utf-8"),
+            logging.StreamHandler(),
+        ],
+        force=True,
+    )
+
+    logging.info(
+        "Node %s starting on TCP port %s",
+        node.node_id,
+        node.tcp_port,
+    )
 
     # Order matters: the TCP server must be listening BEFORE we broadcast,
     # otherwise peers that ACK quickly would fail to connect.
@@ -114,7 +128,7 @@ def main():
     # Termination: no goodbye message. Close the sockets; peers see recv() == b''.
     for peer in node.peers.all_peers():
         peer.sock.close()
-    logger.log_info("Node exiting")
+    logging.info("Node exiting")
 
 
 if __name__ == "__main__":

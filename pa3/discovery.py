@@ -19,10 +19,9 @@ Why is the ACK broadcast instead of unicast?
 
 import socket
 import threading
-
 import connections
-import logger
 import protocol
+import logging
 
 
 def create_udp_socket():
@@ -36,32 +35,73 @@ def create_udp_socket():
 
 def broadcast(node, msg):
     """Send msg to the whole LAN on port 54321 and log it."""
-    # TODO: node.udp_sock.sendto(protocol.encode_udp(msg), (protocol.BROADCAST_ADDR, protocol.UDP_PORT))
-    #       logger.log_sent("broadcast", msg["type"])
-    raise NotImplementedError
+    
+    try:
+        node.udp_sock.sendto(
+            protocol.encode_udp(msg),
+            (protocol.BROADCAST_ADDR, protocol.UDP_PORT)
+        )
+
+    except OSError as exc:
+        logging.info("Could not broadcast %s: %s", msg["type"], exc)
+        return False
+
+    # log that the msg was sent
+    logging.info("SENT broadcast %s", msg["type"])
+    return True
 
 
 def send_peer_request(node):
     """Called once at startup."""
-    # TODO: broadcast(node, protocol.make_peer_request(node.node_id))
-    raise NotImplementedError
+    broadcast(node, protocol.make_peer_request(node.node_id))
 
 
 def udp_listener_loop(node):
     """Runs for the lifetime of the node (daemon thread)."""
+
+    # continuously wait for discovery msgs
     while True:
-        data, addr = node.udp_sock.recvfrom(protocol.BUFFER_SIZE)
+        
+        try:
+            data, addr = node.udp_sock.recvfrom(protocol.BUFFER_SIZE)
+
+        except OSError:
+            return 
+        
         msg = protocol.decode_udp(data)
-        # TODO:
-        #   - skip if msg is None or msg["node_id"] == node.node_id   (own broadcast)
-        #   - logger.log_received(addr, msg["type"])
-        #   - PEER_REQUEST: broadcast(node, make_peer_ack(node.node_id, msg["node_id"], node.tcp_port))
-        #   - PEER_ACK and msg["to_node_id"] == node.node_id:
-        #         connections.connect_to_peer(node, addr[0], msg["tcp_port"], msg["node_id"])
-        #     (connect_to_peer itself refuses duplicates)
-        pass
 
+        # don't respond to invalid msgs
+        if msg is None or not isinstance(msg.get("node_id"), str):
+            continue
 
+        # don't respond to the node's own broadcast
+        if msg["node_id"] == node.node_id:
+            continue
+
+        logging.info("RECEIVED %s:%s %s", addr[0], addr[1], msg["type"])
+        msg_type = msg["type"]
+
+        # another node asking for peers?
+        if msg_type == protocol.PEER_REQUEST:
+            
+            # create ack and broadcast it
+            ack = protocol.make_peer_ack(node.node_id, msg["node_id"], node.tcp_port)
+            broadcast(node, ack)
+
+        # another node sending peer ack to addressed to current node?
+        elif (msg_type == protocol.PEER_ACK and msg.get("to_node_id") == node.node_id 
+              and isinstance(msg.get("node_id"), str)):
+            try:
+                tcp_port = int(msg["tcp_port"])
+            
+            except (KeyError, TypeError, ValueError):
+                logging.info("Ignoring malformed PEER_ACK from %s:%s", addr[0], addr[1])
+                continue
+
+            # start tcp connection
+            connections.connect_to_peer(node, addr[0], tcp_port, msg["node_id"])
+
+        
 def start_discovery(node):
     """Create the socket, start the listener thread, then announce ourselves."""
     node.udp_sock = create_udp_socket()
