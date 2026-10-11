@@ -27,11 +27,15 @@ from peer_table import PeerTable
 class Node:
     """Shared state passed to every module. The modules stay plain functions."""
 
-    def __init__(self, tcp_port, base_dir):
+    def __init__(self, tcp_port: int, base_dir: str):
         self.node_id = str(uuid.uuid4())       # identifies us; used to ignore own broadcasts
         self.tcp_port = tcp_port
         self.shared_dir = os.path.join(base_dir, "shared")
+        os.makedirs(self.shared_dir, exist_ok=True)
         self.downloads_dir = os.path.join(base_dir, "downloads")
+        os.makedirs(self.downloads_dir, exist_ok=True)
+        self.last_shared_list = None
+        self.receiving_files = {}               # mapping filenames of files we are *actively* receiving to open writeable file objects.
         self.log_path = os.path.join(base_dir, "log.txt")
         self.peers = PeerTable()
         self.udp_sock = None                    # set by discovery.start_discovery

@@ -36,6 +36,7 @@ PEER_ACK = "PEER_ACK"
 FILE_LIST = "FILE_LIST"
 DATA_REQUEST = "DATA_REQUEST"
 FILE_DATA = "FILE_DATA"
+FILE_END = "FILE_END"
 
 # Values for FILE_DATA["status"]
 STATUS_OK = "OK"
@@ -79,6 +80,10 @@ def make_file_data(node_id, filename, content):
     # TODO: status=STATUS_OK, content=encode_content(content)
     raise NotImplementedError
 
+def make_file_end(node_id, filename):
+    """TCP: mark end of data."""
+    # TODO: status=STATUS_OK
+    raise NotImplementedError
 
 def make_file_error(node_id, filename, reason):
     """TCP: error response (file no longer exists). Same type as file data,
