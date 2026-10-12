@@ -223,3 +223,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 .DS_Store
+
+# PA3 demo: only node 1's log (pa3/log.txt) is submitted
+pa3/demo/*/log.txt

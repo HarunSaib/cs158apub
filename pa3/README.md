@@ -102,23 +102,14 @@ A file is sent as `FILE_DATA` messages carrying up to 8192 bytes each, **base64-
 Each node writes `log.txt` (and the console) with a millisecond timestamp per line, e.g.:
 
 ```
-[2026-10-11 17:02:53.161] PEER ADDED 10.0.0.240:52488 node=None
-[2026-10-11 17:02:53.161] SENT 10.0.0.240:52488 FILE_LIST
-[2026-10-11 17:02:53.161] RECEIVED 10.0.0.240:52488 FILE_LIST
-[2026-10-11 17:03:10.598] PEER REMOVED 10.0.0.240:6101 node=aebd96fc-...
+[2026-10-11 17:33:59.195] PEER ADDED 10.0.0.240:6001 node=e34f3434-4347-47dd-aa7e-29d0e5d171d1
+[2026-10-11 17:33:59.196] SENT 10.0.0.240:6001 FILE_LIST
+[2026-10-11 17:33:59.196] RECEIVED 10.0.0.240:54321 PEER_ACK
+[2026-10-11 17:33:59.196] RECEIVED 10.0.0.240:6001 FILE_LIST
+[2026-10-11 17:35:02.114] PEER REMOVED 10.0.0.240:6004 node=44763556-7dfe-4bda-8fc7-87ef87e60a1b
 ```
 
 `SENT`/`RECEIVED` lines give the peer address and message type; UDP broadcasts show `<broadcast>:54321`. On the accepting side the peer key uses the caller's ephemeral port and `node=None` until its first `FILE_LIST` arrives.
-
-### Known Limitations
-
-- Each file is identified by name only; a file is not re-downloaded if one with the same name is already in `shared/`.
-- If a peer disconnects mid-transfer, that filename stays marked as downloading until the node restarts.
-- If two nodes start at the same instant, each may dial the other and they end up with two connections. Start nodes at least a second apart.
-
-## Division of Work
-
-TODO: who wrote which files (must match the commit history).
 
 ## Execution Example
 
