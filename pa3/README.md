@@ -9,10 +9,12 @@ Each node is both a client and a server. Nodes discover each other by UDP broadc
 Python 3.8+, no extra packages.
 
 ```powershell
+
 cd pa3
 python p2p_node.py --port 6001                      # uses ./shared, ./downloads, ./log.txt
 python p2p_node.py --port 6002 --dir demo/node2     # additional nodes: own port and folder
 python p2p_node.py --port 6003 --dir demo/node3
+
 ```
 
 | Option | Meaning |
@@ -81,6 +83,7 @@ All messages are UTF-8 JSON objects. Every message has these fields:
 
 ### File Content Encoding
 
+- Base64 inside JSON was chosen so every TCP message is a single JSON object behind the same length prefix, giving one parser for all message types.
 - A file is sent as a sequence of `FILE_DATA` messages, each with up to 8192 bytes of the file base64-encoded in `content`, followed by one `FILE_END`.
 - A 0-byte file is sent as a single `FILE_END`.
 - A missing file is answered with an error `FILE_DATA`; the connection stays open.
@@ -122,13 +125,13 @@ On the accepting side, `<addr>` uses the caller's ephemeral port, and `node=None
 
 | Member | Work |
 |---|---|
-| Harun Saib | project skeleton and module layout; `peer_table.py`; `connections.py` (accept/connect, receive loop, disconnect handling); file manager fixes; CLI `peers`/`get`; README; demo and testing |
-| Sean Worley | `cmd`-based CLI loop; first draft of `file_manager.py` (chunked transfer with `FILE_END`, `.part` downloads, serving/receiving files) |
-| Aminah | `protocol.py` (message builders, UDP encoding, length-prefix framing, `recv_message` fix); `discovery.py` (broadcast, listener, `PEER_ACK` handling); Python `logging` setup |
+| Harun Saib | project skeleton; `peer_table.py`; `connections.py` (accept/connect, receive loop, disconnect handling); CLI `peers`/`get` |
+| Sean Worley | `cmd`-based CLI loop; `file_manager.py` (chunked transfer with `FILE_END`, `.part` downloads, serving/receiving files) |
+| Aminah Jaludi | `protocol.py` (message builders, UDP encoding, length-prefix framing); `discovery.py` (broadcast, listener, `PEER_ACK` handling); Python `logging` setup |
 
 ## Execution Example
 
-Five nodes on one machine (`10.0.0.240`), ports 6001–6005, started ~3 s apart. Excerpts from the nodes' `log.txt`; `...` marks omitted lines. Node IDs: node 1 `e2f188fa…`, node 3 `a211b8ec…`, node 5 `c8bd01b0…`.
+Five nodes on one machine (`10.0.0.240`), ports 6001–6005, started ~3 s apart. Excerpts from the nodes' `log.txt`; `...` marks extra skipped lines. Node IDs: node 1 `e2f188fa…`, node 3 `a211b8ec…`, node 5 `c8bd01b0…`.
 
 **Discovery and file lists** (node 5, started last):
 
