@@ -229,3 +229,5 @@ def recv_message(sock):
     # if peer disconnects halfway into msg, connection ends
     if body is None:
         return None
+
+    return json.loads(body.decode("utf-8"))

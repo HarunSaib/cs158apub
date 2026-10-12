@@ -33,36 +33,49 @@ class PeerTable:
         self.lock = threading.Lock()
         self.peers = {}                 # key -> Peer
 
+    def _has_node_id(self, node_id):
+        """True if a stored peer has this node_id. Caller must already hold self.lock."""
+        return node_id is not None and any(p.node_id == node_id for p in self.peers.values())
+
     def add(self, peer):
-        """Insert a newly connected peer. Return False if that node_id is already connected."""
-        # TODO
-        raise NotImplementedError
+        """Insert a newly connected peer. Return False if that node_id (or key) is already connected."""
+        with self.lock:
+            if peer.key in self.peers or self._has_node_id(peer.node_id):
+                return False
+            self.peers[peer.key] = peer
+            return True
 
     def remove(self, key):
         """Delete and return the Peer (or None). Its file list goes with it."""
-        # TODO
-        raise NotImplementedError
+        with self.lock:
+            return self.peers.pop(key, None)
 
     def get(self, key):
-        # TODO
-        raise NotImplementedError
+        """The Peer stored under key, or None."""
+        with self.lock:
+            return self.peers.get(key)
 
     def is_connected(self, node_id):
         """True if any connected peer has this node_id."""
-        # TODO
-        raise NotImplementedError
+        with self.lock:
+            return self._has_node_id(node_id)
 
     def update_files(self, key, node_id, filenames):
         """Replace a peer's advertised list (and record its node_id if still unknown)."""
-        # TODO
-        raise NotImplementedError
+        with self.lock:
+            peer = self.peers.get(key)
+            if peer is None:                # peer disconnected while its message was being handled
+                return
+            peer.files = set(filenames)
+            if peer.node_id is None:        # server side learns the id from the first message
+                peer.node_id = node_id
 
     def all_peers(self):
         """Snapshot list of Peer objects, safe to iterate without the lock."""
-        # TODO: return list(self.peers.values())  (under the lock)
-        raise NotImplementedError
+        with self.lock:
+            return list(self.peers.values())
 
     def snapshot(self):
         """{key: sorted list of files} for printing in the CLI."""
-        # TODO
-        raise NotImplementedError
+        with self.lock:
+            return {key: sorted(peer.files) for key, peer in self.peers.items()}

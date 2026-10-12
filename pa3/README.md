@@ -27,12 +27,11 @@ CLI commands: `peers`, `get <peer_key> <file>`, `rebroadcast`, `quit` (or Ctrl+D
 | File | Purpose |
 |---|---|
 | `protocol.py` | message builders, length-prefix framing, UDP encode/decode |
-| `logger.py` | thread-safe `log.txt` |
 | `discovery.py` | UDP PEER_REQUEST / PEER_ACK on port 54321 |
 | `peer_table.py` | thread-safe peer → files table |
-| `connections.py` | TCP accept/connect, per-peer receive loop, disconnect handling |
+| `connections.py` | TCP accept/connect, per-peer receive loop, disconnect handling, logging of every TCP message |
 | `file_manager.py` | file list timer, serving and saving files |
-| `p2p_node.py` | `Node` state, startup order, CLI |
+| `p2p_node.py` | `Node` state, logging setup (`log.txt` + console), startup order, CLI |
 
 ## Message Format Specification
 
@@ -95,7 +94,27 @@ A file is sent as `FILE_DATA` messages carrying up to 8192 bytes each, **base64-
 6. A node never requests a file it already has in `shared/`. Files are identified by name, so the existing copy wins.
 7. Each `FILE_LIST` replaces that peer's previous list in the peer table.
 8. On an error reply, the requester logs it and stops tracking that download. It does not retry.
-9. A node leaves by closing its sockets. Peers detect this when `recv` returns empty or raises, then remove the peer and its files from their table.
+9. Each `DATA_REQUEST` is served on its own thread, so a node keeps reading from a peer while sending it a file (two nodes sending each other large files can't block each other).
+10. A node leaves by closing its sockets. Peers detect this when `recv` returns empty or raises, then remove the peer and its files from their table.
+
+### Logging
+
+Each node writes `log.txt` (and the console) with a millisecond timestamp per line, e.g.:
+
+```
+[2026-10-11 17:02:53.161] PEER ADDED 10.0.0.240:52488 node=None
+[2026-10-11 17:02:53.161] SENT 10.0.0.240:52488 FILE_LIST
+[2026-10-11 17:02:53.161] RECEIVED 10.0.0.240:52488 FILE_LIST
+[2026-10-11 17:03:10.598] PEER REMOVED 10.0.0.240:6101 node=aebd96fc-...
+```
+
+`SENT`/`RECEIVED` lines give the peer address and message type; UDP broadcasts show `<broadcast>:54321`. On the accepting side the peer key uses the caller's ephemeral port and `node=None` until its first `FILE_LIST` arrives.
+
+### Known Limitations
+
+- Each file is identified by name only; a file is not re-downloaded if one with the same name is already in `shared/`.
+- If a peer disconnects mid-transfer, that filename stays marked as downloading until the node restarts.
+- If two nodes start at the same instant, each may dial the other and they end up with two connections. Start nodes at least a second apart.
 
 ## Division of Work
 

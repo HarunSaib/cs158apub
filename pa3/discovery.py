@@ -47,7 +47,7 @@ def broadcast(node, msg):
         return False
 
     # log that the msg was sent
-    logging.info("SENT broadcast %s", msg["type"])
+    logging.info("SENT %s:%s %s", protocol.BROADCAST_ADDR, protocol.UDP_PORT, msg["type"])
     return True
 
 
@@ -64,6 +64,9 @@ def udp_listener_loop(node):
         
         try:
             data, addr = node.udp_sock.recvfrom(protocol.BUFFER_SIZE)
+            
+        except ConnectionResetError:
+            continue
 
         except OSError:
             return 
